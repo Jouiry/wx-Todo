@@ -45,7 +45,7 @@
 
 .item .tag { 
   margin-right: 10rpx;
-  color: #7ED321;
+  color: #1296db;
   font-size: 20rpx;
   text-align: center;
 }
@@ -62,4 +62,5 @@
 
 .extra-detail textarea {
   width: 650rpx;
+  color: #db1212;
 }

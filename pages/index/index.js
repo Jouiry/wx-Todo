@@ -1,54 +1,114 @@
-//index.js
-//获取应用实例
-const app = getApp()
-
 Page({
-  data: {
-    motto: 'Hello World',
-    userInfo: {},
-    hasUserInfo: false,
-    canIUse: wx.canIUse('button.open-type.getUserInfo')
-  },
-  //事件处理函数
-  bindViewTap: function() {
-    wx.navigateTo({
-      url: '../logs/logs'
-    })
-  },
-  onLoad: function () {
-    if (app.globalData.userInfo) {
-      this.setData({
-        userInfo: app.globalData.userInfo,
-        hasUserInfo: true
-      })
-    } else if (this.data.canIUse){
-      // 由于 getUserInfo 是网络请求，可能会在 Page.onLoad 之后才返回
-      // 所以此处加入 callback 以防止这种情况
-      app.userInfoReadyCallback = res => {
-        this.setData({
-          userInfo: res.userInfo,
-          hasUserInfo: true
-        })
-      }
-    } else {
-      // 在没有 open-type=getUserInfo 版本的兼容处理
-      wx.getUserInfo({
-        success: res => {
-          app.globalData.userInfo = res.userInfo
-          this.setData({
-            userInfo: res.userInfo,
-            hasUserInfo: true
-          })
+    data: {
+        todo: '',
+        todos: [],
+        leftCount: 1,
+        allFinished: false,
+        allSetting: true,
+        clearSetting: true
+    },
+
+    save: function () {
+        wx.setStorageSync('todos', this.data.todos);
+    },
+
+    onShow: function () {
+        var todos = wx.getStorageSync('todos');
+        if (todos) {
+            var leftCount = todos.filter(function (item) {
+                return !item.finished;
+            }).length;
+            this.setData({ todos: todos, leftCount: leftCount, allFinished: !leftCount });
         }
-      })
+
+        var allSetting = wx.getStorageSync('allSetting');
+        if (typeof allSetting == 'boolean') {
+            this.setData({ allSetting: allSetting });
+        }
+
+        var clearSetting = wx.getStorageSync('clearSetting');
+        if (typeof clearSetting == 'boolean') {
+            this.setData({ clearSetting: clearSetting });
+        }
+    },
+
+    onItemRemove: function (e) {
+        var index = e.currentTarget.dataset.index;
+        var todos = this.data.todos;
+        var remove = todos.splice(index, 1)[0];
+        this.setData({
+            todos: todos,
+            leftCount: this.data.leftCount - (remove.finished ? 0 : 1)
+        });
+        this.save();
+        getApp().writeHistory(remove, 'delete', +new Date());
+    },
+
+    inputTodo: function (e) {
+        this.setData({ todo: e.detail.value });
+    },
+
+    addTodo: function (e) {
+        if (!this.data.todo || !this.data.todo.trim()) return;
+        var todos = this.data.todos;
+        var todo = { content: this.data.todo, finished: false, id: +new Date() };
+        todos.push(todo);
+        this.setData({
+            todo: '',
+            todos: todos,
+            leftCount: this.data.leftCount + 1
+        });
+        this.save();
+        getApp().writeHistory(todo, 'create', +new Date());
+    },
+
+    toggleTodo: function (e) {
+        var index = e.currentTarget.dataset.index;
+        var todos = this.data.todos;
+        var todo = todos[index];
+        todo.finished = !todo.finished;
+        var leftCount = this.data.leftCount + (todo.finished ? -1 : 1);
+        this.setData({
+            todos: todos,
+            leftCount: leftCount,
+            allFinished: !leftCount
+        });
+        this.save();
+        getApp().writeHistory(todo, todo.finished ? 'finish' : 'restart', +new Date());
+    },
+
+    toggleAll: function (e) {
+        var allFinished = !this.data.allFinished;
+        var todos = this.data.todos.map(function (todo) {
+            todo.finished = allFinished;
+            return todo;
+        });
+        this.setData({
+            todos: todos,
+            leftCount: allFinished ? 0 : todos.length,
+            allFinished: allFinished
+        })
+        this.save();
+        getApp().writeHistory(null, allFinished ? 'finishAll' : 'restartAll', +new Date());
+    },
+
+    clearFinished: function (e) {
+        var todos = this.data.todos;
+        var remains = todos.filter(function (todo) {
+            return !todo.finished;
+        });
+        this.setData({ todos: remains });
+        this.save();
+        getApp().writeHistory(null, 'clear', +new Date());
+    },
+
+    createItem: function (e) {
+        wx.navigateTo({ url: '/pages/detail/detail' })
+    },
+
+    onShareAppMessage: function () {
+        return {
+            title: 'Todo Daily'
+        }
     }
-  },
-  getUserInfo: function(e) {
-    console.log(e)
-    app.globalData.userInfo = e.detail.userInfo
-    this.setData({
-      userInfo: e.detail.userInfo,
-      hasUserInfo: true
-    })
-  }
 })
